@@ -34,6 +34,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 # Number of epochs
 num_epochs = 10
 # Loop over the dataset multiple times
+loss_values = []
 for epoch in range(num_epochs):
   
   for states, inputs in dataloader:
@@ -49,6 +50,8 @@ for epoch in range(num_epochs):
     loss.backward()
     # Update weights
     optimizer.step()
+    # Store the loss value for plotting
+    loss_values.append(loss.item())
   
   # Print loss
   print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
@@ -62,3 +65,18 @@ for epoch in range(num_epochs):
 
 # Save model
 torch.save(model.state_dict(), 'model.pth')
+
+# ====== Plot loss values ======
+import matplotlib.pyplot as plt
+import numpy as np
+
+np.save('loss_values_2l.npy', loss_values)
+
+# Plot the loss values
+plt.plot(loss_values)
+plt.grid(True, which='both')
+plt.yscale('log')
+plt.title('Training Loss')
+plt.xlabel('Iteration')
+plt.ylabel('Log Loss')
+plt.show()

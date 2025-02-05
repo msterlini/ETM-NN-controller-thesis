@@ -67,10 +67,15 @@ for epoch in range(num_epochs):
 torch.save(model.state_dict(), 'model.pth')
 
 import matplotlib.pyplot as plt
+import numpy as np
+
+np.save('loss_values_3l.npy', loss_values)
 
 # Plot the loss values
 plt.plot(loss_values)
-plt.xlabel('Iteration')
-plt.ylabel('Loss')
+plt.grid(True, which='both')
+plt.yscale('log')
 plt.title('Training Loss')
+plt.xlabel('Iteration')
+plt.ylabel('Log Loss')
 plt.show()
