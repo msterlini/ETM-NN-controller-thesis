@@ -1,5 +1,8 @@
 import torch.nn as nn
 
+# Simple 2-layer (16-16) neural network with no output activation
+
+# Activation function chosen is saturation
 class NeuralNet(nn.Module):
   def __init__(self, input_size):
     super(NeuralNet, self).__init__()
