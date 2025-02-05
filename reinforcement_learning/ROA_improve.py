@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
+import os
 from reinforcement_learning.environments.pendulum_integrator_env import NonLinPendulum_env
 from models.NN3l import NeuralNet
 from LMI import LMI
-import warnings
-import os
 
 # User warnings filter
 warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines3')
@@ -17,10 +17,28 @@ warnings.filterwarnings("ignore", category=UserWarning, module='gymnasium')
 # Device declaration to exploit GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+folder = '../deep_learning/3_layers/weights'
+
+## ======== WEIGHTS AND BIASES IMPORT ========
+files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
+W = []
+b = []
+for f in files:
+  if f.startswith('W') and f.endswith('.csv'):
+    W.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
+  elif f.startswith('b') and f.endswith('.csv'):
+    b.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
+
+# Weights and biases reshaping
+W[-1] = W[-1].reshape((1, len(W[-1])))
+
 # Custom environment declaration
-env = NonLinPendulum_env()
+env = NonLinPendulum_env(W, b)
+lmi = LMI(W, b)
+lmi.solve(0.1)
+lmi.save_results('LMI_results')
 
-
+# Model network architecture extraction
 neural_net = NeuralNet(env.nx)
 net_arch = neural_net.arch
 
@@ -40,18 +58,22 @@ model_rl = PPO(
 # - Training start: load the current best weights from the LMI optimization
 # - Rollout start: reset the model to the last best weights if the current model is not improving or is infeasible
 # - Rollout end: solve the LMI optimization problem to find the new best weights
-# - Step: not used yet
+# - Step: not used but forced to return True to avoid errors
 
 # The callback also saves the best model and the current model at the end of each rollout
 class CustomCallback(BaseCallback):
   def __init__(self, verbose = 0):
     super().__init__(verbose)
+
+    self.nlayers = env.system.nlayers
+
     # Path to import the best weights, LQR is set to True to load the LQR weights
-    self.LQR = False
+    self.LQR = True
     if self.LQR:
-      self.param_path = os.path.abspath(__file__ + '/../LQR/model.pth')
-    else:
       self.param_path = os.path.abspath(__file__ + '/../policy.pth')
+    else:
+      self.param_path = os.path.abspath(__file__ + '/../policy_old.pth')
+
     # Variables to store the best ROA area during training
     self.best_ROA = 0.0
     # Variable to store current rollout attempt without improvement
@@ -62,19 +84,24 @@ class CustomCallback(BaseCallback):
     self.reset = 0
   
   # Function to extract the weights from the model, it is important to clone the data otherwise only a deep copy of the reference is created
-  def get_weights(self, model):
-    W1 = self.model.policy.mlp_extractor.policy_net[0].weight.data.clone().detach().to(device).numpy()
-    b1 = self.model.policy.mlp_extractor.policy_net[0].bias.data.clone().detach().to(device).numpy()
-    W2 = self.model.policy.mlp_extractor.policy_net[2].weight.data.clone().detach().to(device).numpy()
-    b2 = self.model.policy.mlp_extractor.policy_net[2].bias.data.clone().detach().to(device).numpy()
-    W3 = self.model.policy.mlp_extractor.policy_net[4].weight.data.clone().detach().to(device).numpy()
-    b3 = self.model.policy.mlp_extractor.policy_net[4].bias.data.clone().detach().to(device).numpy()
-    W4 = self.model.policy.action_net.weight.data.clone().detach().to(device).numpy()
-    b4 = self.model.policy.action_net.bias.data.clone().detach().to(device).numpy()
-    W = [W1, W2, W3, W4]
-    b = [b1, b2, b3, b4]
+  def get_weights(self):
+    W = []
+    b = []
+    
+    # Hidden layers extraction
+    for i in range(self.nlayers - 1):
+      weight = self.model.policy.mlp_extractor.policy_net[i*2].weight.data.clone().detach().to(device).numpy()
+      bias = self.model.policy.mlp_extractor.policy_net[i*2].bias.data.clone().detach().to(device).numpy()
+      W.append(weight)
+      b.append(bias)
+    
+    # Output layer extraction
+    weight = self.model.policy.action_net.weight.data.clone().detach().to(device).numpy()
+    bias = self.model.policy.action_net.bias.data.clone().detach().to(device).numpy()
+    W.append(weight)
+    b.append(bias)
     return W, b
-  
+
   # Callback called on the training start
   def _on_training_start(self):
     
@@ -83,33 +110,23 @@ class CustomCallback(BaseCallback):
 
     # The flag LQR is necessary since the two state_dict have different names for their elements
     if self.LQR: 
-      # Layer 1
-      self.model.policy.mlp_extractor.policy_net[0].weight = nn.Parameter(state_dict['l1.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[0].bias = nn.Parameter(state_dict['l1.bias'].clone().detach().requires_grad_(True))
       
-      # Layer 2
-      self.model.policy.mlp_extractor.policy_net[2].weight = nn.Parameter(state_dict['l2.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[2].bias = nn.Parameter(state_dict['l2.bias'].clone().detach().requires_grad_(True))
-      
-      # Layer 3
-      self.model.policy.mlp_extractor.policy_net[4].weight = nn.Parameter(state_dict['l3.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[4].bias = nn.Parameter(state_dict['l3.bias'].clone().detach().requires_grad_(True))
+      # Hidden layers
+      for i in range(self.nlayers - 1):
+        id = 'l' + str(i+1) 
+        self.model.policy.mlp_extractor.policy_net[i*2].weight = nn.Parameter(state_dict[id + '.weight'].clone().detach().requires_grad_(True))
+        self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(state_dict[id + '.bias'].clone().detach().requires_grad_(True))
       
       # Output layer
-      self.model.policy.action_net.weight = nn.Parameter(state_dict['l4.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.action_net.bias = nn.Parameter(state_dict['l4.bias'].clone().detach().requires_grad_(True))
+      id = 'l' + str(self.nlayers) 
+      self.model.policy.action_net.weight = nn.Parameter(state_dict[id + '.weight'].clone().detach().requires_grad_(True))
+      self.model.policy.action_net.bias = nn.Parameter(state_dict[id + '.bias'].clone().detach().requires_grad_(True))
+
     else:
-      # Layer 1
-      self.model.policy.mlp_extractor.policy_net[0].weight = nn.Parameter(state_dict['mlp_extractor.policy_net.0.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[0].bias = nn.Parameter(state_dict['mlp_extractor.policy_net.0.bias'].clone().detach().requires_grad_(True))
-      
-      # Layer 2
-      self.model.policy.mlp_extractor.policy_net[2].weight = nn.Parameter(state_dict['mlp_extractor.policy_net.2.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[2].bias = nn.Parameter(state_dict['mlp_extractor.policy_net.2.bias'].clone().detach().requires_grad_(True))
-      
-      # Layer 3
-      self.model.policy.mlp_extractor.policy_net[4].weight = nn.Parameter(state_dict['mlp_extractor.policy_net.4.weight'].clone().detach().requires_grad_(True))
-      self.model.policy.mlp_extractor.policy_net[4].bias = nn.Parameter(state_dict['mlp_extractor.policy_net.4.bias'].clone().detach().requires_grad_(True))
+      for i in range(self.nlayers - 1):
+        id = str(i*2) 
+        self.model.policy.mlp_extractor.policy_net[i*2].weight = nn.Parameter(state_dict['mlp_extractor.policy_net.' + id + '.weight'].clone().detach().requires_grad_(True))
+        self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(state_dict['mlp_extractor.policy_net.' + id + '.bias'].clone().detach().requires_grad_(True))
       
       # Output layer
       self.model.policy.action_net.weight = nn.Parameter(state_dict['action_net.weight'].clone().detach().requires_grad_(True))
@@ -121,7 +138,10 @@ class CustomCallback(BaseCallback):
     self.model.policy.optimizer = optim_class(self.model.policy.parameters(), **optim_param)
 
     # Just at the beginning of the training the P matrix is the result of the last standalone LMI problem solution
-    P = np.load('Test/P.npy')
+    try:
+      P = np.load('LMI_results/P.npy')
+    except:
+      P = np.eye(env.nx)
     self.model.get_env().env_method('set_P', P, P)
 
   def _on_step(self):
@@ -196,15 +216,15 @@ class CustomCallback(BaseCallback):
     if self.reset:
       self.reset = 0
       self.n_rollout_no_improvement = 0
+      
+      # Hidden layers
+      for i in range(self.nlayers - 1):
+        self.model.policy.mlp_extractor.policy_net[i*2].weight = nn.Parameter(torch.tensor(self.best_W[i], requires_grad=True))
+        self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(torch.tensor(self.best_b[i], requires_grad=True))
 
-      self.model.policy.mlp_extractor.policy_net[0].weight = nn.Parameter(torch.tensor(self.best_W[0], requires_grad=True))
-      self.model.policy.mlp_extractor.policy_net[0].bias = nn.Parameter(torch.tensor(self.best_b[0], requires_grad=True))
-      self.model.policy.mlp_extractor.policy_net[2].weight = nn.Parameter(torch.tensor(self.best_W[1], requires_grad=True))
-      self.model.policy.mlp_extractor.policy_net[2].bias = nn.Parameter(torch.tensor(self.best_b[1], requires_grad=True))
-      self.model.policy.mlp_extractor.policy_net[4].weight = nn.Parameter(torch.tensor(self.best_W[2], requires_grad=True))
-      self.model.policy.mlp_extractor.policy_net[4].bias = nn.Parameter(torch.tensor(self.best_b[2], requires_grad=True))
-      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[3], requires_grad=True))
-      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[3], requires_grad=True))
+      # Output layer
+      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[self.nlayers], requires_grad=True))
+      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[self.nlayers], requires_grad=True))
     
       # Reinitialize the optimizer, otherwise the model will keep the previous optimizer state and will not improve
       optim_class = type(self.model.policy.optimizer)

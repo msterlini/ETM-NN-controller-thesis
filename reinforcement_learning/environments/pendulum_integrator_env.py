@@ -7,24 +7,10 @@ import os
 
 class NonLinPendulum_env(gym.Env):
   
-  def __init__(self):
+  def __init__(self, W, b):
     super(NonLinPendulum_env, self).__init__()
 
-    ## ======== WEIGHTS AND BIASES IMPORT ========
-    folder = '../../deep_learning/3_layers/weights'
-
-    files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
-    W = []
-    b = []
-    for f in files:
-      if f.startswith('W') and f.endswith('.csv'):
-        W.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
-      elif f.startswith('b') and f.endswith('.csv'):
-        b.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
-
-    # Weights and biases reshaping
-    W[-1] = W[-1].reshape((1, len(W[-1])))
-
+    # Initialize the weights and biases
     self.W = W
     self.b = b
 

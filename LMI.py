@@ -3,6 +3,7 @@ import config as conf
 import numpy as np
 import cvxpy as cp
 import warnings
+import os
 
 class LMI():
   def __init__(self, W, b):
@@ -286,8 +287,8 @@ if __name__ == "__main__":
   ## ======== WEIGHTS AND BIASES IMPORT ========
 
   # folder = 'deep_learning/2_layers/weights'
-  # folder = 'deep_learning/3_layers/weights'
-  folder = 'weights'
+  folder = 'deep_learning/3_layers/weights'
+  # folder = 'weights'
 
   files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
   W = []

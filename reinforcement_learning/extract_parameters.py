@@ -18,5 +18,3 @@ def extract_parameters(model_path: str):
     df = pd.DataFrame(value)
     filename = f'./new_weights/{name}.csv'
     df.to_csv(filename, index=False, header=False)  
-
-def get_structure()
