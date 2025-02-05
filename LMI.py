@@ -285,14 +285,18 @@ if __name__ == "__main__":
 
   ## ======== WEIGHTS AND BIASES IMPORT ========
 
-  files = sorted(os.listdir(os.path.abspath(__file__ + "/../weights")))
+  # folder = 'deep_learning/2_layers/weights'
+  # folder = 'deep_learning/3_layers/weights'
+  folder = 'weights'
+
+  files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
   W = []
   b = []
   for f in files:
     if f.startswith('W') and f.endswith('.csv'):
-      W.append(np.loadtxt(os.path.abspath(__file__ + "/../weights/" + f), delimiter=','))
+      W.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
     elif f.startswith('b') and f.endswith('.csv'):
-      b.append(np.loadtxt(os.path.abspath(__file__ + "/../weights/" + f), delimiter=','))
+      b.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
 
   # Weights and biases reshaping
   W[-1] = W[-1].reshape((1, len(W[-1])))
@@ -301,10 +305,10 @@ if __name__ == "__main__":
   lmi = LMI(W, b)
 
   # Search of alpha value with golden section search
-  # alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
+  alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
 
   # Alpha value import coming from previous simulations
-  alpha = np.load('weights/alpha.npy')
+  # alpha = np.load('weights/alpha.npy')
 
   # LMI solving
   lmi.solve(alpha, verbose=True)

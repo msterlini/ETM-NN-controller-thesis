@@ -12,6 +12,9 @@ class NeuralNet(nn.Module):
     self.hardtanh2 = nn.Hardtanh()
     self.l3 = nn.Linear(16, 1)
   
+    # Architecture
+    self.arch = [16, 16]
+
   def forward(self, x):
     x = self.hardtanh1(self.l1(x))
     x = self.hardtanh2(self.l2(x))
