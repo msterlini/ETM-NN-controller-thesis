@@ -87,11 +87,11 @@ class CustomCallback(BaseCallback):
     self.nlayers = env.system.nlayers
 
     # Path to import the best weights, LQR is set to True to load the LQR weights
-    self.LQR = True
+    self.LQR = False
     if self.LQR:
       self.param_path = os.path.abspath(__file__ + '/../policy.pth')
     else:
-      self.param_path = os.path.abspath(__file__ + '/../policy_old.pth')
+      self.param_path = os.path.abspath(__file__ + '/../best_policy.pth')
 
     # Variables to store the best ROA area during training
     self.best_ROA = 0.0
@@ -209,7 +209,8 @@ class CustomCallback(BaseCallback):
         self.best_b = b
 
         # Reward update in the environment, the reward is the difference between the current area and the best area, in this case I prefer to give directly the new ROA as a reward to further encourage the policy to find improvements
-        self.model.get_env().env_method('set_ROA_reward', self.best_ROA/200.0)
+        # self.model.get_env().env_method('set_ROA_reward', self.best_ROA/200.0)
+        self.model.get_env().env_method('set_ROA_reward', (self.best_ROA)/200.0)
 
         # Model save
         self.model.save('best_rollout_model.zip')
@@ -221,10 +222,9 @@ class CustomCallback(BaseCallback):
         print(f"Feasible increment, but not better than best model. Best ROA: {self.best_ROA}")
         print(f'Difference of volume: {volume - self.best_ROA}')
         print(f"Keeping current P")
-        print(f"Current rollout attempt: {self.n_rollout_no_improvement}/{self.n_rollout_limit}")
-        
-        # Reward update in the environment, the reward is the difference between the current area and the best area so it is a cost in this case
-        self.model.get_env().env_method('set_ROA_reward', (volume - self.best_ROA)/200.0)
+        print(f"Current rollout attempt: {self.n_rollout_no_improvement}") # Reward update in the environment, the reward is the difference between the current volum and the best volume so it is a cost in this case
+        # self.model.get_env().env_method('set_ROA_reward', (volume - self.best_ROA)/200.0)
+        self.model.get_env().env_method('set_ROA_reward', (self.best_ROA)/200.0)
 
         # If the no improvement counter reaches the limit, reset the model to the last best weights
         if self.n_rollout_no_improvement >= self.n_rollout_limit:
