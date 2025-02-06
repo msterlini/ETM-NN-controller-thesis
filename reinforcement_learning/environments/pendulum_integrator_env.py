@@ -98,6 +98,7 @@ class NonLinPendulum_env(gym.Env):
       # The cost is set equal to the increment of the Lyapunov function.
       # Evolutions that increase the Lyapunov function are penalized, while evolutions that decrease the Lyapunov function are rewarded.
       cost = (new_state - xstar).T @ self.P @ (new_state - xstar) - (state - xstar).T @ self.P @ (state - xstar)
+      
     else: 
       # Standard quadratic cost
       state_cost = (th**2 + 0.1*thdot**2 +  0.001*(eta**2) + 0.001*(action**2))[0]
@@ -144,7 +145,7 @@ class NonLinPendulum_env(gym.Env):
     self.ref = np.random.uniform(-self.ref_bound, self.ref_bound)
 
     # Re-initialize the system to update the equilibrium point
-    self.system = System(self.W, self.b, [], self.ref, 0.0)
+    # self.system = System(self.W, self.b, [], self.ref, 0.0)
 
     # Return the observation
     return (self.get_obs(), {})

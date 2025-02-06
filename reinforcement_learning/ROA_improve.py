@@ -11,8 +11,8 @@ from models.NN3l import NeuralNet
 from LMI import LMI
 
 # User warnings filter
-warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines3')
-warnings.filterwarnings("ignore", category=UserWarning, module='gymnasium')
+# warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines3')
+# warnings.filterwarnings("ignore", category=UserWarning, module='gymnasium')
 
 # Device declaration to exploit GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,6 +46,7 @@ net_arch = neural_net.arch
 policy_kwargs = dict(activation_fn=torch.nn.Hardtanh, net_arch=net_arch)
 
 # Model declaration
+print(device)
 model_rl = PPO(
   "MlpPolicy", 
   env, 
