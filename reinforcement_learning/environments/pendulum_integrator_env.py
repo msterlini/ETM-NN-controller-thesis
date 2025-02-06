@@ -137,7 +137,7 @@ class NonLinPendulum_env(gym.Env):
     self.time += 1
 
     # Return the observation, the cost, the termination flag, the truncated flag and the info
-    return self.get_obs(), -float(cost) + self.ROA_reward + 0.1 * self.time, terminated, truncated, {}
+    return self.get_obs(), -float(cost) + self.ROA_reward, terminated, truncated, {}
   
   # Reset the environment
   def reset(self, seed=None):

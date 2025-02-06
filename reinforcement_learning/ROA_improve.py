@@ -37,6 +37,9 @@ W[-1] = W[-1].reshape((1, len(W[-1])))
 env = NonLinPendulum_env(W, b)
 ref_bound = env.get_ref_bound()
 
+all_rewards = []
+all_ROA = []
+
 def create_batch_equilibrium(W, b, n):
   equilibria = []
 
@@ -236,6 +239,8 @@ class CustomCallback(BaseCallback):
       print(f'Infeasible increment, keeping current P')
       print(f"Resetting to last best model")
       self.reset = 1
+    
+    rewards = self.model.get_env().env_method('get_ROA_reward')
 
   # Callback called on the rollout start, if the reset flag is set the model will be reset to the last best weights
   def _on_rollout_start(self):
