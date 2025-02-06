@@ -211,20 +211,19 @@ class LMI():
     self.alpha.value = alpha_val
 
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=True)
+      self.prob.solve(solver=cp.MOSEK, verbose=verbose)
     except cp.error.SolverError:
       return None
 
     if self.prob.status not in ["optimal", "optimal_inaccurate"]:
       return None
     else:
-      if verbose:
-        print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
-        print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
-        print(f"Size of ROA: {4/3 * np.pi/np.sqrt(np.linalg.det(self.P.value))}")
+      print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
+      print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
+      print(f"Size of ROA: {4/3 * np.pi/np.sqrt(np.linalg.det(self.P.value))}")
       
       # Returns area of ROA if feasible
-      return 4/3 * np.pi/np.sqrt(np.linalg.det(self.P.value))
+      return self.P.value
   
   # Function that searches for the optimal alpha value by performing a golden ratio search until a certain numerical accuracy is reached or the limit of iterations is reached 
   def search_alpha(self, feasible_extreme, infeasible_extreme, threshold, verbose=False):

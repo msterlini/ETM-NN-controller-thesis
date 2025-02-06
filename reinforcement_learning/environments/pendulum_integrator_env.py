@@ -36,6 +36,10 @@ class NonLinPendulum_env(gym.Env):
     self.ref_bound = 0.5
     self.ref = 0.0
 
+    # Equilibria set
+    self.equilibria_set = []
+    self.xstar = self.system.xstar
+
     # P matrix initialization for lypaunov function used for cost
     self.P = np.eye(self.nx)*0
     self.old_P = np.eye(self.nx)*0
@@ -64,10 +68,16 @@ class NonLinPendulum_env(gym.Env):
   
   def set_ROA_reward(self, ROA_reward):
     self.ROA_reward = ROA_reward
+
+  def set_equilibria_set(self, equilibria_set):
+    self.equilibria_set = equilibria_set
   
   # Getter methods
   def get_P(self):
     return self.P
+  
+  def get_ref_bound(self):
+    return self.ref_bound
 
   def step(self, action):
 
@@ -93,7 +103,7 @@ class NonLinPendulum_env(gym.Env):
 
     if LMI_cost:
       # equilibrium point
-      xstar = np.squeeze(self.system.xstar)
+      xstar = np.squeeze(self.xstar)
       
       # The cost is set equal to the increment of the Lyapunov function.
       # Evolutions that increase the Lyapunov function are penalized, while evolutions that decrease the Lyapunov function are rewarded.
@@ -141,11 +151,9 @@ class NonLinPendulum_env(gym.Env):
     # Resets the time
     self.time = 0
 
-    # Random reference
-    self.ref = np.random.uniform(-self.ref_bound, self.ref_bound)
-
-    # Re-initialize the system to update the equilibrium point
-    # self.system = System(self.W, self.b, [], self.ref, 0.0)
+    # Take a random tuple from self.equilibria_set
+    idx = np.random.randint(len(self.equilibria_set))
+    self.ref, self.xstar = self.equilibria_set[idx]
 
     # Return the observation
     return (self.get_obs(), {})

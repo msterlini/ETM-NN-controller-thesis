@@ -9,10 +9,11 @@ import os
 from reinforcement_learning.environments.pendulum_integrator_env import NonLinPendulum_env
 from models.NN3l import NeuralNet
 from LMI import LMI
+from system import System
 
 # User warnings filter
-# warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines3')
-# warnings.filterwarnings("ignore", category=UserWarning, module='gymnasium')
+warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines3')
+warnings.filterwarnings("ignore", category=UserWarning, module='gymnasium')
 
 # Device declaration to exploit GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -34,6 +35,23 @@ W[-1] = W[-1].reshape((1, len(W[-1])))
 
 # Custom environment declaration
 env = NonLinPendulum_env(W, b)
+ref_bound = env.get_ref_bound()
+
+def create_batch_equilibrium(W, b, n):
+  equilibria = []
+
+  for i in range(n):
+    ref  = np.random.uniform(-ref_bound, ref_bound)
+    s = System(W, b, [], ref, 0.0)
+    equilibria.append((ref, s.xstar))
+    print(f'\rEquilibrium {i+1}/{n} created', end='')
+  print('')
+  return equilibria
+
+n_equilibria = 10
+equilibria_set = create_batch_equilibrium(W, b, n_equilibria)
+env.set_equilibria_set(equilibria_set)
+  
 lmi = LMI(W, b)
 lmi.solve(0.1)
 lmi.save_results('LMI_results')
@@ -80,7 +98,7 @@ class CustomCallback(BaseCallback):
     # Variable to store current rollout attempt without improvement
     self.n_rollout_no_improvement = 0
     # User imposed limit to the number of rollouts without improvement
-    self.n_rollout_limit = 5
+    self.n_rollout_limit = 10
     # Flag variable to reset the model to the last best weights
     self.reset = 0
   
@@ -145,6 +163,7 @@ class CustomCallback(BaseCallback):
       P = np.eye(env.nx)
     self.model.get_env().env_method('set_P', P, P)
 
+
   def _on_step(self):
     return True
 
@@ -153,15 +172,21 @@ class CustomCallback(BaseCallback):
   def _on_rollout_end(self):
     
     # Weights and biases extraction
-    W, b = self.get_weights(self.model)
+    W, b = self.get_weights()
     # LMI class initialization
+
     lmi = LMI(W, b)  
     # LMI problem solution, alpha value empirically set to 0.1 to have a feasible solution that is not too conservative. The alpha value search will not be performed mid-training to save processing time. Meaning that potentially a slightly better ROA solution can be found by performing it after the training.
-    P, _, _ = lmi.solve(0.1)
+    
+    print('Solving LMI..')
+    P = lmi.solve(0.1)
+
     
     # Following the logic implemented in the LMI P is None for a infeasible solution.
     if P is not None:
 
+      create_batch_equilibrium(W, b, n_equilibria)
+      self.model.get_env().env_method('set_equilibria_set', equilibria_set)
       # ROA volume calculation
       volume = 4/3 * np.pi/np.sqrt(np.linalg.det(P))
       # Saving current policy if feasible
@@ -194,7 +219,7 @@ class CustomCallback(BaseCallback):
         # Increment no improvement counter
         self.n_rollout_no_improvement += 1
         print(f"Feasible increment, but not better than best model. Best ROA: {self.best_ROA}")
-        print(f'Difference of area: {volume - self.best_ROA}')
+        print(f'Difference of volume: {volume - self.best_ROA}')
         print(f"Keeping current P")
         print(f"Current rollout attempt: {self.n_rollout_no_improvement}/{self.n_rollout_limit}")
         
@@ -224,8 +249,8 @@ class CustomCallback(BaseCallback):
         self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(torch.tensor(self.best_b[i], requires_grad=True))
 
       # Output layer
-      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[self.nlayers], requires_grad=True))
-      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[self.nlayers], requires_grad=True))
+      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[-1], requires_grad=True))
+      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[-1], requires_grad=True))
     
       # Reinitialize the optimizer, otherwise the model will keep the previous optimizer state and will not improve
       optim_class = type(self.model.policy.optimizer)
