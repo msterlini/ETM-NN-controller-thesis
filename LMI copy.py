@@ -21,7 +21,6 @@ class LMI():
     self.bound    = self.system.bound
 
     # Flag variables to determine which kind of LMI has to be solved
-    self.old_trigger  = conf.old_trigger
     self.optim        = conf.optim
     
     # Sign definition of Delta V parameter
@@ -63,32 +62,86 @@ class LMI():
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
 
     # ETM Variables
-    T_val         = cp.Variable(self.nphi)
-    self.T        = cp.diag(T_val)
-    self.T_layers = []
+    S_val         = cp.Variable(self.nphi)
+    self.S        = cp.diag(S_val)
+    self.S_layers = []
     start = 0
     for i in range(self.nlayers):
       end = start + self.neurons[i]
-      self.T_layers.append(self.T[start:end, start:end])
+      self.S_layers.append(self.S[start:end, start:end])
       start = end
 
-    self.Z        = cp.Variable((self.nphi, self.nx))
-    self.Z_layers = []
+    self.G        = cp.Variable((self.nphi, self.nx))
+    self.G_layers = []
     start = 0
     for i in range(self.nlayers):
       end = start + self.neurons[i]
-      self.Z_layers.append(self.Z[start:end, :])
+      self.G_layers.append(self.G[start:end, :])
       start = end
 
     # Finsler multipliers, structured to reduce computational burden and different for each layer
     self.finsler_multipliers = []
     for i in range(self.nlayers):
-      N1 = cp.Variable((self.nx, self.nphi))
-      N2 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-      N3 = cp.diag(cp.Variable(self.nphi))
-      N = cp.vstack([N1, N2, N3])
+      N1  = cp.Variable((self.nx, self.nphi))
+      N2  = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N3  = cp.diag(cp.Variable(self.nphi))
+      N   = cp.vstack([N1, N2, N3])
       self.finsler_multipliers.append(N)
+    
+    # Finlser multipliers for new structure
+    self.new_finsler_multipliers = []
+    for i in range(self.nlayers):
+      size_tot  = self.nx + 2 * self.nphi
+      size      = self.nx + 2 * self.neurons[i]
+      Theta11   = cp.Variable((size_tot, self.nx))
+      Theta13   = cp.Variable((size_tot, self.neurons[i]))
+      Theta21   = cp.Variable((size, self.nx))
+      Theta23   = cp.Variable((size, self.neurons[i]))
 
+      if self.nx > self.neurons[i]:
+        n_id = self.nx // self.neurons[i]
+        n_zeros = self.nx % self.neurons[i]
+        block1 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
+        if n_zeros != 0:
+          block1 = cp.vstack([block1, np.zeros((n_zeros, self.neurons[i]))])
+      elif self.nx < self.neurons[i]:
+        n_id = self.neurons[i] // self.nx
+        n_zeros = self.neurons[i] % self.nx
+        block1 = cp.hstack([np.eye(self.nx) for _ in range(n_id)])
+        if n_zeros != 0:
+          block1 = cp.hstack([block1, np.zeros((self.nx, n_zeros))])
+      else:
+        block1 = np.eye(self.nx)
+
+      n_id = self.nphi // self.neurons[i]
+      n_zeros = self.nphi % self.neurons[i]
+      block2 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
+      if n_zeros != 0:
+        block2 = cp.vstack([block2, np.zeros((n_zeros, self.neurons[i]))])
+
+      Theta12 = cp.vstack([block1, block2, block2])
+      Theta22 = cp.vstack([block1, np.eye(self.neurons[i]), np.eye(self.neurons[i])])
+
+      print(Theta12)
+
+      Theta1    = cp.hstack([Theta11, Theta12, Theta13])
+      Theta2    = cp.hstack([Theta21, Theta22, Theta23])
+      self.new_finsler_multipliers.append([Theta1, Theta2])
+
+    self.F1         = cp.Variable((self.nx, self.nphi))
+    self.K          = cp.Variable(self.nphi)
+    self.F3         = cp.Variable(self.nphi)
+    self.F1_layers  = []
+    self.K_layers   = []
+    self.F3_layers  = []
+    start = 0
+    for i in range(self.nlayers):
+      end = start + self.neurons[i]
+      self.F1_layers.append(self.F1[:, start:end])
+      self.K_layers.append(self.K[start:end])
+      self.F3_layers.append(self.F3[start:end])
+      start = end
+      
     # New ETM matrices
     self.bigX_matrices = []
     for i in range(self.nlayers):
@@ -122,21 +175,18 @@ class LMI():
 
     # ETM constraints
     # Structure of sector condition to add to finsler constraint
-    self.Omegas = []
-    for i in range(self.nlayers):
-      Omega = cp.bmat([
-        [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[i])), np.zeros((self.nx, self.neurons[i]))],
-        [self.Z_layers[i], self.T_layers[i], -self.T_layers[i]],
-        [np.zeros((self.neurons[i], self.nx)), np.zeros((self.neurons[i], self.neurons[i])), np.zeros((self.neurons[i], self.neurons[i]))]
-      ])
-      self.Omegas.append(Omega)
+    # self.Omegas = []
+    # for i in range(self.nlayers):
+    #   Omega = cp.bmat([
+    #     [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[i])), np.zeros((self.nx, self.neurons[i]))],
+    #     [self.Z_layers[i], self.T_layers[i], -self.T_layers[i]],
+    #     [np.zeros((self.neurons[i], self.nx)), np.zeros((self.neurons[i], self.neurons[i])), np.zeros((self.neurons[i], self.neurons[i]))]
+    #   ])
+    #   self.Omegas.append(Omega)
 
     # Addition of sector conditions to Delta V matrix
     for i in range(self.nlayers):
-      if self.old_trigger:
-        self.M += -self.Pi_nu.T @ (self.projection_matrices[i].T @ (self.Omegas[i] + self.Omegas[i].T) @ self.projection_matrices[i]) @ self.Pi_nu
-      else:
-        self.M += -self.Pi_nu.T @ (self.projection_matrices[i].T @ (self.bigX_matrices[i] + self.bigX_matrices[i].T) @ self.projection_matrices[i]) @ self.Pi_nu
+      self.M += -self.Pi_nu.T @ (self.projection_matrices[i].T @ (self.bigX_matrices[i] + self.bigX_matrices[i].T) @ self.projection_matrices[i]) @ self.Pi_nu
 
     # Definition of Ker([x, psi, nu]) to add in the finsler constraints
     self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
@@ -144,41 +194,54 @@ class LMI():
     # Finsler constraints for each layer
     self.finsler_constraints = []
     for i in range(self.nlayers):
-      finsler = self.projection_matrices[i].T @ (self.bigX_matrices[i] - self.Omegas[i] + self.bigX_matrices[i].T - self.Omegas[i].T) @ self.projection_matrices[i] + self.finsler_multipliers[i] @ self.hconstr + self.hconstr.T @ self.finsler_multipliers[i].T
+      # finsler = self.projection_matrices[i].T @ (self.bigX_matrices[i] - self.Omegas[i] + self.bigX_matrices[i].T - self.Omegas[i].T) @ self.projection_matrices[i] + self.finsler_multipliers[i] @ self.hconstr + self.hconstr.T @ self.finsler_multipliers[i].T
+      # self.finsler_constraints.append(finsler)
+      finsler1 = self.projection_matrices[i].T @ (self.bigX_matrices[i] + self.bigX_matrices[i].T) @ self.projection_matrices[i] + self.finsler_multipliers[i] @ self.hconstr + self.hconstr.T @ self.finsler_multipliers[i].T + self.new_finsler_multipliers[i][0] @ self.projection_matrices[i] + self.projection_matrices[i].T @ self.new_finsler_multipliers[i][0].T
+      finsler2 = -self.new_finsler_multipliers[i][0] + self.projection_matrices[i].T @ self.new_finsler_multipliers[i][1].T
+      upsilon = cp.bmat([
+        [np.zeros((self.nx, self.nx)), self.G_layers[i].T, np.zeros((self.nx, self.neurons[i]))],
+        [self.G_layers[i], 2 * self.S_layers[i], -np.eye(self.neurons[i])],
+        [np.zeros((self.neurons[i], self.nx)), -np.eye(self.neurons[i]), np.zeros((self.neurons[i], self.neurons[i]))]
+      ])
+      finsler3 = -upsilon - self.new_finsler_multipliers[i][1] - self.new_finsler_multipliers[i][1].T
+      finsler = cp.bmat([
+        [finsler1, finsler2],
+        [finsler2.T, finsler3]
+      ])
       self.finsler_constraints.append(finsler)
    
     # Constraint definition 
     self.constraints = [self.P >> 0]
-    self.constraints += [self.T >> 0]
+    self.constraints += [self.S >> 0]
+    # self.constraints += [self.S << 1e5 * np.eye(self.S.shape[0])]
     self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-    self.constraints += [self.eps >> 0]
-    self.constraints += [self.M + self.eps >> 0]
-    if not self.old_trigger:
-      for constraint in self.finsler_constraints:
-        self.constraints += [constraint << 0]
+    # self.constraints += [self.eps >> 0]
+    # self.constraints += [self.M + self.eps >> 0]
+    for constraint in self.finsler_constraints:
+      self.constraints += [constraint << 0]
 
     # Minimization constraints of X_i for each layer
-    if self.optim:
-      for i in range(self.nlayers):
-        id = np.eye(self.nx + 2 * self.neurons[i])
-        mat = cp.bmat([
-          [-self.betas[i] * id, self.bigX_matrices[i]],
-          [self.bigX_matrices[i].T, -id]
-        ])
-        self.constraints += [mat << 0]
+    # if self.optim:
+    #   for i in range(self.nlayers):
+    #     id = np.eye(self.nx + 2 * self.neurons[i])
+    #     mat = cp.bmat([
+    #       [-self.betas[i] * id, self.bigX_matrices[i]],
+    #       [self.bigX_matrices[i].T, -id]
+    #     ])
+    #     self.constraints += [mat << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers):
       for k in range(self.neurons[i]):
-
-        Z_el = self.Z_layers[i][k, :]
-        T_el = self.T_layers[i][k, k]
-
-        vcap = np.min([np.abs(-self.bound - self.wstar[i][k][0]), np.abs(self.bound - self.wstar[i][k][0])], axis=0)
-
+        G_el  = cp.reshape(self.G_layers[i][k, :], (1, self.nx))
+        F1_el = cp.reshape(self.F1_layers[i][:, k], (self.nx, 1))
+        K_el  = cp.reshape(self.K_layers[i][k], (1,1))
+        F3_el = cp.reshape(self.F3_layers[i][k], (1,1))
+        v_el  = cp.reshape(np.min([np.abs(-self.bound - self.wstar[i][k][0]), np.abs(self.bound - self.wstar[i][k][0])], axis=0), (1,1))
         ellip = cp.bmat([
-            [self.P, cp.reshape(Z_el, (self.nx ,1))],
-            [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+          [self.P, G_el.T + v_el * F1_el, -F1_el],
+          [G_el + v_el * F1_el.T, v_el * (K_el + K_el.T), -K_el + v_el * F3_el.T],
+          [-F1_el.T, -K_el.T + v_el * F3_el, 1 - F3_el - F3_el.T]
         ])
         self.constraints += [ellip >> 0]
     
@@ -186,15 +249,13 @@ class LMI():
   def create_problem(self):
 
     # Objective function defined as the sum of the trace of P, eps and the sum of all alphax variables
-    if self.optim:
-      obj = cp.trace(self.P) + cp.trace(self.eps)
-      for i in range(self.nlayers):
-        obj += self.betas[i]
-    else:
-      if self.old_trigger:
-        obj = cp.trace(self.P)
-      else:
-        obj = cp.trace(self.P) + cp.trace(self.eps)
+    # if self.optim:
+    #   obj = cp.trace(self.P) + cp.trace(self.eps)
+    #   for i in range(self.nlayers):
+    #     obj += self.betas[i]
+    # else:
+      # obj = cp.trace(self.P) + cp.trace(self.eps)
+    obj = cp.trace(self.P)
 
     self.objective = cp.Minimize(obj)
 
@@ -212,6 +273,7 @@ class LMI():
 
     try:
       self.prob.solve(solver=cp.MOSEK, verbose=verbose)
+      # self.prob.solve(solver=cp.SCS, verbose=verbose, max_iters=1000000)
     except cp.error.SolverError:
       return None
 
@@ -272,12 +334,8 @@ class LMI():
     if not os.path.exists(path_dir):
       os.makedirs(path_dir)
     np.save(f"{path_dir}/P.npy", self.P.value)
-    if self.old_trigger:
-      for id, omega in enumerate(self.Omegas):
-        np.save(f"{path_dir}/Omega{id+1}.npy", omega.value)
-    else: 
-      for id, bigX in enumerate(self.bigX_matrices):
-        np.save(f"{path_dir}/bigX{id+1}.npy", bigX.value)
+    for id, bigX in enumerate(self.bigX_matrices):
+      np.save(f"{path_dir}/bigX{id+1}.npy", bigX.value)
       
 # Main loop execution 
 if __name__ == "__main__":
@@ -285,36 +343,36 @@ if __name__ == "__main__":
 
   ## ======== WEIGHTS AND BIASES IMPORT ========
 
-  # folder = 'deep_learning/2_layers/weights'
-  folder = 'deep_learning/3_layers/weights'
-  # folder = 'weights'
+  # # folder = 'deep_learning/2_layers/weights'
+  # folder = 'deep_learning/3_layers/weights'
+  # # folder = 'weights'
 
-  files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
-  W = []
-  b = []
-  for f in files:
-    if f.startswith('W') and f.endswith('.csv'):
-      W.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
-    elif f.startswith('b') and f.endswith('.csv'):
-      b.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
+  # files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
+  # W = []
+  # b = []
+  # for f in files:
+  #   if f.startswith('W') and f.endswith('.csv'):
+  #     W.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
+  #   elif f.startswith('b') and f.endswith('.csv'):
+  #     b.append(np.loadtxt(os.path.abspath(__file__ + "/../" + folder + '/' + f), delimiter=','))
 
-  # Weights and biases reshaping
-  W[-1] = W[-1].reshape((1, len(W[-1])))
+  # # Weights and biases reshaping
+  # W[-1] = W[-1].reshape((1, len(W[-1])))
   
   W = [np.load('deep_learning/K.npy')]
   b = [np.array([np.float32(0)])]
-  
+
   # Lmi object creation
   lmi = LMI(W, b)
 
   # Search of alpha value with golden section search
-  alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
+  # alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
 
   # Alpha value import coming from previous simulations
   # alpha = np.load('weights/alpha.npy')
 
   # LMI solving
-  lmi.solve(alpha, verbose=True)
+  lmi.solve(10, verbose=True)
 
   # LMI results storage
   # lmi.save_results('new_results')
