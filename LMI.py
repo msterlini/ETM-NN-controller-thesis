@@ -301,8 +301,8 @@ if __name__ == "__main__":
   # Weights and biases reshaping
   W[-1] = W[-1].reshape((1, len(W[-1])))
   
-  W = [np.load('deep_learning/K.npy')]
-  b = [np.array([np.float32(0)])]
+  # W = [np.load('deep_learning/K.npy')]
+  # b = [np.array([np.float32(0)])]
   
   # Lmi object creation
   lmi = LMI(W, b)

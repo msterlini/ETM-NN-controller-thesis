@@ -27,7 +27,7 @@ class LMI():
     self.m_thres = 1e-6
 
     # Parameters definition
-    self.alpha = cp.Parameter(nonneg=True)
+    self.alpha = cp.Parameter()
 
     # Auxiliary matrices
     self.Abar = self.system.Abar
@@ -119,10 +119,8 @@ class LMI():
       if n_zeros != 0:
         block2 = cp.vstack([block2, np.zeros((n_zeros, self.neurons[i]))])
 
-      Theta12 = cp.vstack([block1, block2, block2])
-      Theta22 = cp.vstack([block1, np.eye(self.neurons[i]), np.eye(self.neurons[i])])
-
-      print(Theta12)
+      Theta12 = self.alpha * cp.vstack([block1, block2, block2])
+      Theta22 = self.alpha * cp.vstack([block1, np.eye(self.neurons[i]), np.eye(self.neurons[i])])
 
       Theta1    = cp.hstack([Theta11, Theta12, Theta13])
       Theta2    = cp.hstack([Theta21, Theta22, Theta23])
@@ -294,7 +292,7 @@ class LMI():
     i = 0
     
     # Loop until the difference between the two extremes is smaller than the threshold or the limit of iterations is reached
-    while (feasible_extreme - infeasible_extreme > threshold) and i < 100:
+    while (feasible_extreme - infeasible_extreme > threshold) and i < 1e15:
 
       i += 1
       alpha1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
@@ -366,7 +364,15 @@ if __name__ == "__main__":
   lmi = LMI(W, b)
 
   # Search of alpha value with golden section search
-  # alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
+  alpha = lmi.search_alpha(10.0, -10.0, 1e-8, verbose=True)
+
+  # alphas = np.linspace(-1, 1, 10000)
+  # for alpha in alphas:
+  #   if lmi.solve(alpha, verbose=False):
+  #     print('SOLUTION FOUND')
+  #     break
+  #   else:
+  #     print(f'NO SOLUTION FOUND for alpha: {alpha:.6f}')
 
   # Alpha value import coming from previous simulations
   # alpha = np.load('weights/alpha.npy')
