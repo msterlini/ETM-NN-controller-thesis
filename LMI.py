@@ -28,7 +28,8 @@ class LMI():
     self.m_thres = 1e-6
 
     # Parameters definition
-    self.alpha = cp.Parameter(nonneg=True)
+    # self.alpha = cp.Parameter(nonneg=True)
+    self.alpha = cp.Parameter()
 
     # Auxiliary matrices
     self.Abar = self.system.Abar
@@ -149,7 +150,8 @@ class LMI():
    
     # Constraint definition 
     self.constraints = [self.P >> 0]
-    self.constraints += [self.T >> 0]
+    self.constraints += [self.T >> self.alpha * np.eye(self.nphi)]
+    # self.constraints += [self.T >> 0]
     self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
     self.constraints += [self.eps >> 0]
     self.constraints += [self.M + self.eps >> 0]
@@ -178,7 +180,8 @@ class LMI():
 
         ellip = cp.bmat([
             [self.P, cp.reshape(Z_el, (self.nx ,1))],
-            [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+            # [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+            [cp.reshape(Z_el, (1, self.nx)), cp.reshape(vcap**2 * self.alpha * T_el, (1, 1))] 
         ])
         self.constraints += [ellip >> 0]
     
@@ -285,8 +288,8 @@ if __name__ == "__main__":
 
   ## ======== WEIGHTS AND BIASES IMPORT ========
 
-  # folder = 'deep_learning/2_layers/weights'
-  folder = 'deep_learning/3_layers/weights'
+  folder = 'deep_learning/2_layers/weights'
+  # folder = 'deep_learning/3_layers/weights'
   # folder = 'weights'
 
   files = sorted(os.listdir(os.path.abspath(__file__ + "/../" + folder)))
@@ -308,7 +311,7 @@ if __name__ == "__main__":
   lmi = LMI(W, b)
 
   # Search of alpha value with golden section search
-  alpha = lmi.search_alpha(1.0, 0.0, 1e-3, verbose=True)
+  alpha = lmi.search_alpha(1.0, -1.0, 1e-3, verbose=True)
 
   # Alpha value import coming from previous simulations
   # alpha = np.load('weights/alpha.npy')

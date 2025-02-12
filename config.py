@@ -4,4 +4,4 @@
 # - optim = True: LMI with optimization
 # - optim = False: LMI without optimization
 old_trigger = False
-optim       = True
+optim       = False

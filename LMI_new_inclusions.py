@@ -98,29 +98,32 @@ class LMI():
       Theta21   = cp.Variable((size, self.nx))
       Theta23   = cp.Variable((size, self.neurons[i]))
 
-      if self.nx > self.neurons[i]:
-        n_id = self.nx // self.neurons[i]
-        n_zeros = self.nx % self.neurons[i]
-        block1 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
-        if n_zeros != 0:
-          block1 = cp.vstack([block1, np.zeros((n_zeros, self.neurons[i]))])
-      elif self.nx < self.neurons[i]:
-        n_id = self.neurons[i] // self.nx
-        n_zeros = self.neurons[i] % self.nx
-        block1 = cp.hstack([np.eye(self.nx) for _ in range(n_id)])
-        if n_zeros != 0:
-          block1 = cp.hstack([block1, np.zeros((self.nx, n_zeros))])
-      else:
-        block1 = np.eye(self.nx)
+      # if self.nx > self.neurons[i]:
+      #   n_id = self.nx // self.neurons[i]
+      #   n_zeros = self.nx % self.neurons[i]
+      #   block1 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
+      #   if n_zeros != 0:
+      #     block1 = cp.vstack([block1, np.zeros((n_zeros, self.neurons[i]))])
+      # elif self.nx < self.neurons[i]:
+      #   n_id = self.neurons[i] // self.nx
+      #   n_zeros = self.neurons[i] % self.nx
+      #   block1 = cp.hstack([np.eye(self.nx) for _ in range(n_id)])
+      #   if n_zeros != 0:
+      #     block1 = cp.hstack([block1, np.zeros((self.nx, n_zeros))])
+      # else:
+      #   block1 = np.eye(self.nx)
 
-      n_id = self.nphi // self.neurons[i]
-      n_zeros = self.nphi % self.neurons[i]
-      block2 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
-      if n_zeros != 0:
-        block2 = cp.vstack([block2, np.zeros((n_zeros, self.neurons[i]))])
+      # n_id = self.nphi // self.neurons[i]
+      # n_zeros = self.nphi % self.neurons[i]
+      # block2 = cp.vstack([np.eye(self.neurons[i]) for _ in range(n_id)])
+      # if n_zeros != 0:
+      #   block2 = cp.vstack([block2, np.zeros((n_zeros, self.neurons[i]))])
 
-      Theta12 = self.alpha * cp.vstack([block1, block2, block2])
-      Theta22 = self.alpha * cp.vstack([block1, np.eye(self.neurons[i]), np.eye(self.neurons[i])])
+      # Theta12 = self.alpha * cp.vstack([block1, block2, block2])
+      # Theta22 = self.alpha * cp.vstack([block1, np.eye(self.neurons[i]), np.eye(self.neurons[i])])
+
+      Theta12 = np.zeros((size_tot, self.neurons[i]))
+      Theta22 = cp.vstack([np.zeros((self.nx, self.neurons[i])), self.alpha * self.S_layers[i], np.eye(self.neurons[i])*0])
 
       Theta1    = cp.hstack([Theta11, Theta12, Theta13])
       Theta2    = cp.hstack([Theta21, Theta22, Theta23])
@@ -364,7 +367,7 @@ if __name__ == "__main__":
   lmi = LMI(W, b)
 
   # Search of alpha value with golden section search
-  alpha = lmi.search_alpha(10.0, -10.0, 1e-8, verbose=True)
+  alpha = lmi.search_alpha(1000.0, -1000.0, 1e-8, verbose=True)
 
   # alphas = np.linspace(-1, 1, 10000)
   # for alpha in alphas:
