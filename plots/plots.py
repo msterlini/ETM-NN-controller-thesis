@@ -56,4 +56,33 @@ for i in range(len(result_paths)):
 ax.legend(fontsize=14, loc='upper left')
 plt.show()
 
-  
+loss_values_paths = ['loss_values_2l.npy', 'loss_values_3l.npy', 'loss_values_6l.npy']  
+
+loss_values = [np.load(os.path.abspath(__file__ + "/../" + path)) for path in loss_values_paths]
+# Create a figure and axis
+fig, ax = plt.subplots(1, 2, figsize=(14, 6))
+
+# Normal scale plot
+ax[0].plot(loss_values[0], label="2 layer loss", color='blue')
+ax[0].plot(loss_values[1], label="3 layer loss", color='red')
+ax[0].plot(loss_values[2], label="6 layer loss", color='green')
+ax[0].set_title('Loss Trend (Normal Scale)')
+ax[0].set_xlabel('Epochs')
+ax[0].set_ylabel('Loss')
+ax[0].grid(True)
+
+# Logarithmic scale plot
+ax[1].plot(loss_values[0], label="2 layer loss", color='blue')
+ax[1].plot(loss_values[1], label="3 layer loss", color='red')
+ax[1].plot(loss_values[2], label="6 layer loss", color='green')
+ax[1].set_title('Loss Trend (Logarithmic Scale)')
+ax[1].set_xlabel('Epochs')
+ax[1].set_ylabel('Log(Loss)')
+ax[1].set_yscale('log')  # Set the y-axis to log scale
+ax[1].grid(True)
+
+# Show the plot
+plt.tight_layout()
+ax[0].legend(fontsize=14, loc='upper left')
+ax[1].legend(fontsize=14, loc='upper left')
+plt.show() 
