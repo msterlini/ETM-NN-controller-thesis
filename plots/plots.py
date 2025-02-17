@@ -13,7 +13,7 @@ for path in result_paths:
     if f.startswith('P') and f.endswith('.npy'):
       P_mats.append(np.load(os.path.abspath(__file__ + "/../" + path + "/" + f)))
 
-colors = ['orange', 'red', 'blue']
+colors = ['blue', 'orange', 'red']
 layers = ['2', '3', '6']
 
 for i in range(len(result_paths)):
@@ -39,7 +39,7 @@ for path in result_paths:
     if f.startswith('P') and f.endswith('.npy'):
       P_mats.append(np.load(os.path.abspath(__file__ + "/../" + path + "/" + f)))
 
-colors = ['yellow', 'orange', 'red', 'blue']
+colors = ['green', 'blue', 'orange', 'red']
 layers = ['3', '2', '3', '6']
 
 for i in range(len(result_paths)):
