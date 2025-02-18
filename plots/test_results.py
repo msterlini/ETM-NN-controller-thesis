@@ -75,7 +75,7 @@ if random_start:
     s = System(W, b, bigX, ref, gamma_threshold)
 
     # Check if the initial state is inside the ellipsoid, specifically on the border for plotting purposes
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: #and (x0).T @ P @ (x0) >= 0.9:
 
       # Initial eta0 computation with respect to the initial state
       eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
@@ -120,11 +120,11 @@ stop_run = False
 nsteps = 0
 
 # Magnitude of the Lyapunov function to stop the simulation
-lyap_magnitude = 1e-15
+lyap_magnitude = 1e-50
 # lyap_magnitude = 1e-400
 
 # Maximum number of steps to stop the simulation
-max_steps = 5000
+max_steps = 3000
 
 # Simulation loop
 while not stop_run:
@@ -200,7 +200,7 @@ for i, event in enumerate(events):
       events[i][id] = None
 
 # Control input plot
-plot_cut = 200
+plot_cut = 3000
 fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
 axs[0].plot(timegrid[:plot_cut], inputs[:plot_cut], label=r'u')
 # Ustar plot
@@ -228,7 +228,7 @@ axs[2].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[1], 'r--', la
 axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1] * events[:plot_cut, s.nlayers-1], marker='o', markerfacecolor='none', linestyle='None', label='Events')
 # axs[2].set_xlabel('Time steps',fontsize=14)
 axs[2].set_ylabel(r'$\dot \theta$ (rad/s)',fontsize=14)
-axs[2].legend(fontsize=14, loc='lower right', ncols=3)
+axs[2].legend(fontsize=14, loc='upper right', ncols=3)
 axs[2].grid(True)
 
 # Integrator state plot
@@ -242,32 +242,47 @@ axs[3].legend(fontsize=14, loc='lower right', ncols=3)
 axs[3].grid(True)
 plt.show()
 
-fig, axs = plt.subplots(1, 2, figsize=(10, 4))
 
+fig, axs = plt.subplots(figsize=(10, 4))
 
 # Lyapunov function plot
-lyap_cut = 100
+# lyap_cut = 100
+lyap_cut = 3000
 lyap_diff = lyap_diff[:lyap_cut]
-axs[0].plot(timegrid[1:lyap_cut+1], timegrid[1:lyap_cut+1] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
-axs[0].plot(timegrid[:lyap_cut], lyap[:lyap_cut], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
-axs[0].set_xlabel('Time steps', fontsize=14)
-axs[0].legend(fontsize=14)
-axs[0].grid(True)
-
-# Eta plots
-eta_cut = 100
-for i in range(s.nlayers):
-  axs[1].plot(timegrid[:eta_cut], etas[:eta_cut, i], label=fr'$\eta^{{{i+1}}}$')
-axs[1].legend(fontsize=14)
-axs[1].set_xlabel('Time steps', fontsize=14)
-axs[1].grid(True)
+axs.plot(timegrid[1:lyap_cut+1], timegrid[1:lyap_cut+1] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
+axs.plot(timegrid[:lyap_cut], lyap[:lyap_cut], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
+axs.set_xlabel('Time steps', fontsize=14)
+axs.legend(fontsize=14)
+axs.grid(True)
 plt.show()
 
+fig, axs = plt.subplots(figsize=(10, 4))
+
+# Eta plots
+# eta_cut = 100
+eta_cut = 3000
+for i in range(s.nlayers):
+  axs.plot(timegrid[:eta_cut], etas[:eta_cut, i], label=fr'$\eta^{{{i+1}}}$')
+axs.legend(fontsize=14)
+axs.set_xlabel('Time steps', fontsize=14)
+axs.grid(True)
+plt.show()
+
+fig, axs = plt.subplots(figsize=(10, 4))
+
+# Eta plots
+# eta_cut = 100
+eta_cut = 3000
+for i in range(s.nlayers):
+  axs.plot(timegrid[:eta_cut], np.log(etas[:eta_cut, i]), label=fr'$log(\eta^{{{i+1}}})$')
+axs.legend(fontsize=14)
+axs.set_xlabel('Time steps', fontsize=14)
+axs.grid(True)
+plt.show()
 
 # Event plot
-event_cut = 300
-if nsteps < event_cut:
-  event_cut = nsteps
+# event_cut = 300
+event_cut = 3000
 colors = ['r', 'g', 'b', 'c']
 body = [':', '-.', '--', '-']
 heads = ['s', 'd', 'x', 'v']
@@ -279,8 +294,6 @@ plot_events = events[:event_cut]
 
 for i in range(s.nlayers):
   plot_events[:, i] *= i + 1
-
-plot_events = plot_events[::-1]
 
 for i in range(s.nlayers - 1, -1, -1):
   ax.stem(np.arange(event_cut), plot_events[:, i], linefmt=colors[i] + body[i], markerfmt=colors[i] + heads[i], basefmt="", label=f'ETM {i+1}')

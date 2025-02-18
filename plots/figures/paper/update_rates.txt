@@ -1,0 +1,5 @@
+Layer 1 has been triggered 36.1% of times
+Layer 2 has been triggered 35.2% of times
+Layer 3 has been triggered 33.6% of times
+Layer 4 has been triggered 29.0% of times
+Overall update rate: 34.9%
