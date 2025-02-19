@@ -3,5 +3,5 @@
 # - old_trigger = False: LMI with restructured triggering condition
 # - optim = True: LMI with optimization
 # - optim = False: LMI without optimization
-old_trigger = False
+old_trigger = True
 optim       = False

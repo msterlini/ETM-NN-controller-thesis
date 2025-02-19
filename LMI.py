@@ -179,11 +179,12 @@ class LMI():
         vcap = np.min([np.abs(-self.bound - self.wstar[i][k][0]), np.abs(self.bound - self.wstar[i][k][0])], axis=0)
 
         ellip = cp.bmat([
-            [self.P,                          cp.reshape(Z_el, (self.nx ,1)), np.zeros((self.nx, 1))],
-            [cp.reshape(Z_el, (1, self.nx)),  cp.reshape(T_el, (1, 1)),       np.zeros((1, 1))],
-            [np.zeros((1,3)),                 np.zeros((1,1)),                cp.reshape(-T_el + vcap**2, (1,1))]
+            # [self.P,                          cp.reshape(Z_el, (self.nx ,1)), np.zeros((self.nx, 1))],
+            # [cp.reshape(Z_el, (1, self.nx)),  cp.reshape(T_el, (1, 1)),       np.zeros((1, 1))],
+            # [np.zeros((1,3)),                 np.zeros((1,1)),                cp.reshape(-T_el + vcap**2, (1,1))]
             # [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
-            # [cp.reshape(Z_el, (1, self.nx)), cp.reshape(vcap**2 * self.alpha * T_el, (1, 1))] 
+            [self.P,                         cp.reshape(Z_el, (self.nx ,1))],
+            [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
         ])
         self.constraints += [ellip >> 0]
     
@@ -319,7 +320,7 @@ if __name__ == "__main__":
   # alpha = np.load('weights/alpha.npy')
 
   # LMI solving
-  lmi.solve(10000000, verbose=True)
+  lmi.solve(0.1, verbose=True)
 
   # LMI results storage
   # lmi.save_results('new_results')

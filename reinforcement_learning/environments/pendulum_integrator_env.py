@@ -61,6 +61,8 @@ class NonLinPendulum_env(gym.Env):
 
     self.ROA_reward = 0.0
 
+    self.cumulative_reward = 0
+
   # Setter methods
   def set_P(self, P, old_P):
     self.P = P
@@ -68,6 +70,9 @@ class NonLinPendulum_env(gym.Env):
   
   def set_ROA_reward(self, ROA_reward):
     self.ROA_reward = ROA_reward
+
+  def get_ROA_reward(self):
+    return self.ROA_reward
 
   def set_equilibria_set(self, equilibria_set):
     self.equilibria_set = equilibria_set
@@ -108,6 +113,8 @@ class NonLinPendulum_env(gym.Env):
       # The cost is set equal to the increment of the Lyapunov function.
       # Evolutions that increase the Lyapunov function are penalized, while evolutions that decrease the Lyapunov function are rewarded.
       cost = (new_state - xstar).T @ self.P @ (new_state - xstar) - (state - xstar).T @ self.P @ (state - xstar)
+
+      reward = -float(cost) + self.ROA_reward
       
     else: 
       # Standard quadratic cost
@@ -116,7 +123,7 @@ class NonLinPendulum_env(gym.Env):
       stay_alive_reward = 1.0
       
       # Cost function
-      cost = state_cost - stay_alive_reward
+      reward = float(-state_cost + stay_alive_reward)
 
     # Flags required for the environment
     truncated = False
@@ -136,17 +143,26 @@ class NonLinPendulum_env(gym.Env):
     # Update the time
     self.time += 1
 
+    self.cumulative_reward += reward
+
     # Return the observation, the cost, the termination flag, the truncated flag and the info
-    return self.get_obs(), -float(cost) + self.ROA_reward, terminated, truncated, {}
+    return self.get_obs(), reward, terminated, truncated, {}
   
   # Reset the environment
   def reset(self, seed=None):
-    # Random initialization of the state
-    th = np.float32(np.random.uniform(low=-self.lim_state[0], high=self.lim_state[0]))
-    thdot = np.float32(np.random.uniform(low=-self.lim_state[1], high=self.lim_state[1]))
-    int = np.float32(0.0)
-    # Update the state
-    self.state = np.squeeze(np.array([th, thdot, int]))
+    in_ellip = False
+
+    while not in_ellip:
+      # Random initialization of the state
+      th = np.float32(np.random.uniform(low=-self.lim_state[0], high=self.lim_state[0]))
+      thdot = np.float32(np.random.uniform(low=-self.lim_state[1], high=self.lim_state[1]))
+      int = np.float32(0.0)
+      # Update the state
+      state = np.squeeze(np.array([th, thdot, int]))
+      
+      if (state.T @ self.P @ state <= 1.5):
+        in_ellip = True
+        self.state = state
     
     # Resets the time
     self.time = 0
@@ -154,6 +170,11 @@ class NonLinPendulum_env(gym.Env):
     # Take a random tuple from self.equilibria_set
     idx = np.random.randint(len(self.equilibria_set))
     self.ref, self.xstar = self.equilibria_set[idx]
+    # Save the cumulative ROA of the episode
+
+    with open('cumulative_reward.csv', 'a') as f:
+      f.write(f"{self.cumulative_reward}\n")
+    self.cumulative_reward = 0
 
     # Return the observation
     return (self.get_obs(), {})

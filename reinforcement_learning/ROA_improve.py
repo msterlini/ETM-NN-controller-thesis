@@ -33,6 +33,8 @@ for f in files:
 # Weights and biases reshaping
 W[-1] = W[-1].reshape((1, len(W[-1])))
 
+lmi = LMI(W,b)
+
 # Custom environment declaration
 env = NonLinPendulum_env(W, b)
 ref_bound = env.get_ref_bound()
@@ -101,9 +103,12 @@ class CustomCallback(BaseCallback):
     # Variable to store current rollout attempt without improvement
     self.n_rollout_no_improvement = 0
     # User imposed limit to the number of rollouts without improvement
-    self.n_rollout_limit = 10
+    self.n_rollout_limit = 100
     # Flag variable to reset the model to the last best weights
     self.reset = 0
+
+    self.best_W = []
+    self.best_b = []
   
   # Function to extract the weights from the model, it is important to clone the data otherwise only a deep copy of the reference is created
   def get_weights(self):
@@ -112,14 +117,14 @@ class CustomCallback(BaseCallback):
     
     # Hidden layers extraction
     for i in range(self.nlayers - 1):
-      weight = self.model.policy.mlp_extractor.policy_net[i*2].weight.data.clone().detach().to(device).numpy()
-      bias = self.model.policy.mlp_extractor.policy_net[i*2].bias.data.clone().detach().to(device).numpy()
+      weight = self.model.policy.mlp_extractor.policy_net[i*2].weight.data.clone().detach().cpu().numpy()
+      bias = self.model.policy.mlp_extractor.policy_net[i*2].bias.data.clone().detach().cpu().numpy()
       W.append(weight)
       b.append(bias)
     
     # Output layer extraction
-    weight = self.model.policy.action_net.weight.data.clone().detach().to(device).numpy()
-    bias = self.model.policy.action_net.bias.data.clone().detach().to(device).numpy()
+    weight = self.model.policy.action_net.weight.data.clone().detach().cpu().numpy()
+    bias = self.model.policy.action_net.bias.data.clone().detach().cpu().numpy()
     W.append(weight)
     b.append(bias)
     return W, b
@@ -234,7 +239,12 @@ class CustomCallback(BaseCallback):
           print(f"Resetting to last best model")
           self.reset = 1
     
+      # Save the ROA reward
+      with open('roa_reward.csv', 'a') as f:
+        f.write(f"{volume}\n")
+
     # In the case of infeasible policy update reset the model to the last best weights
+
     else:
       print(f'Infeasible increment, keeping current P')
       print(f"Resetting to last best model")
@@ -250,12 +260,12 @@ class CustomCallback(BaseCallback):
       
       # Hidden layers
       for i in range(self.nlayers - 1):
-        self.model.policy.mlp_extractor.policy_net[i*2].weight = nn.Parameter(torch.tensor(self.best_W[i], requires_grad=True))
-        self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(torch.tensor(self.best_b[i], requires_grad=True))
+        self.model.policy.mlp_extractor.policy_net[i*2].weight = nn.Parameter(torch.tensor(self.best_W[i], requires_grad=True).to(device))
+        self.model.policy.mlp_extractor.policy_net[i*2].bias = nn.Parameter(torch.tensor(self.best_b[i], requires_grad=True).to(device))
 
       # Output layer
-      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[-1], requires_grad=True))
-      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[-1], requires_grad=True))
+      self.model.policy.action_net.weight = nn.Parameter(torch.tensor(self.best_W[-1], requires_grad=True).to(device))
+      self.model.policy.action_net.bias = nn.Parameter(torch.tensor(self.best_b[-1], requires_grad=True).to(device))
     
       # Reinitialize the optimizer, otherwise the model will keep the previous optimizer state and will not improve
       optim_class = type(self.model.policy.optimizer)
@@ -272,51 +282,4 @@ CustomEvalCallback = EvalCallback(env, best_model_save_path='.', log_path='./log
 callback = CustomCallback()
 
 # Model training
-model_rl.learn(total_timesteps=1000000, callback=callback, progress_bar=True)
-
-## Testing the best model after training
-
-# Empty lists to store the states and inputs of the episodes
-states = []
-inputs = []
-episode_state = []
-episode_input = []
-
-# Variables to store the total number of episodes and the number of converging episodes
-n_tot = 0
-n_converging = 0
-
-# Environment reset
-vec_env = model_rl.get_env()
-obs = vec_env.reset()
-
-# Loop to run the episodes
-for i in range(10000):
-  action, _states = model_rl.predict(obs, deterministic=True)
-  obs, rewards, done, info = vec_env.step(action)
-  episode_state.append(obs)
-  episode_input.append(action)
-
-  # If the episode is done, store the episode and reset the episode lists
-  if done:
-    n_tot += 1
-    states.append(episode_state)
-    inputs.append(episode_input)
-    episode_state = []
-    episode_input = []
-
-## Result plotting    
-for episode in states:
-  if len(episode) > 50:
-    n_converging += 1
-    episode = np.squeeze(np.array(episode))
-    plt.plot(episode[:,0], episode[:,1])
-plt.show()
-
-for episode in inputs:
-  if len(episode) > 50:
-    episode = np.squeeze(np.array(episode))
-    plt.plot(episode)
-plt.show()
-
-print(f'Converging episodes: {n_converging}/{n_tot}')
+model_rl.learn(total_timesteps=10000000, callback=callback, progress_bar=True)
