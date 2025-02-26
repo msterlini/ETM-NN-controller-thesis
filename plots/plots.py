@@ -57,47 +57,47 @@ import pandas as pd
 # ax.legend(fontsize=14, loc='upper left')
 # plt.show()
 
-# loss_values_paths = ['loss_values_2l.npy', 'loss_values_3l.npy', 'loss_values_6l.npy']  
+loss_values_paths = ['loss_values_2l.npy', 'loss_values_3l.npy', 'loss_values_6l.npy']  
 
-# loss_values = [np.load(os.path.abspath(__file__ + "/../" + path)) for path in loss_values_paths]
-# # Create a figure and axis
-# fig, ax = plt.subplots(1, 2, figsize=(14, 6))
+loss_values = [np.load(os.path.abspath(__file__ + "/../" + path)) for path in loss_values_paths]
+# Create a figure and axis
+fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 
-# # Normal scale plot
-# ax[0].plot(loss_values[0], label="2 layer loss", color='blue')
-# ax[0].plot(loss_values[1], label="3 layer loss", color='red')
-# ax[0].plot(loss_values[2], label="6 layer loss", color='green')
-# ax[0].set_title('Loss Trend (Normal Scale)', fontsize=18)
-# ax[0].set_xlabel('Epochs', fontsize=16)
-# ax[0].set_ylabel('Loss', fontsize=16)
-# ax[0].grid(True)
+# Normal scale plot
+ax[0].plot(loss_values[0], label="2 layer loss", color='blue')
+ax[0].plot(loss_values[1], label="3 layer loss", color='red')
+ax[0].plot(loss_values[2], label="6 layer loss", color='green')
+ax[0].set_title('Loss Trend (Normal Scale)', fontsize=18)
+ax[0].set_xlabel('Epochs', fontsize=16)
+ax[0].set_ylabel('Loss', fontsize=16)
+ax[0].grid(True)
 
-# # Logarithmic scale plot
-# # Plot with transparency
-# ax[1].plot(loss_values[0], label="2 layer loss", color='blue', alpha=0.5)
-# ax[1].plot(loss_values[1], label="3 layer loss", color='red', alpha=0.5)
-# ax[1].plot(loss_values[2], label="6 layer loss", color='green', alpha=0.5)
+# Logarithmic scale plot
+# Plot with transparency
+ax[1].plot(loss_values[0], label="2 layer loss", color='blue', alpha=0.3)
+ax[1].plot(loss_values[1], label="3 layer loss", color='red', alpha=0.3)
+ax[1].plot(loss_values[2], label="6 layer loss", color='green', alpha=0.3)
 
-# # Smooth evolution using a moving average
-# window_size = 1000
-# smooth_loss_values = [np.convolve(loss, np.ones(window_size)/window_size, mode='valid') for loss in loss_values]
+# Smooth evolution using a moving average
+window_size = 1000
+smooth_loss_values = [np.convolve(loss, np.ones(window_size)/window_size, mode='valid') for loss in loss_values]
 
-# # Plot the smoothed values
-# ax[1].plot(smooth_loss_values[0], color='blue')
-# ax[1].plot(smooth_loss_values[1], color='red')
-# ax[1].plot(smooth_loss_values[2], color='green')
+# Plot the smoothed values
+ax[1].plot(smooth_loss_values[0], color='blue')
+ax[1].plot(smooth_loss_values[1], color='red')
+ax[1].plot(smooth_loss_values[2], color='green')
 
-# ax[1].set_title('Loss Trend (Logarithmic Scale)', fontsize=18)
-# ax[1].set_xlabel('Epochs', fontsize=16)
-# ax[1].set_ylabel('Log(Loss)', fontsize=16)
-# ax[1].set_yscale('log')  # Set the y-axis to log scale
-# ax[1].grid(True)
+ax[1].set_title('Loss Trend (Logarithmic Scale)', fontsize=18)
+ax[1].set_xlabel('Epochs', fontsize=16)
+ax[1].set_ylabel('Log(Loss)', fontsize=16)
+ax[1].set_yscale('log')  # Set the y-axis to log scale
+ax[1].grid(True)
 
-# # Show the plot
-# plt.tight_layout()
-# ax[0].legend(fontsize=16, loc='upper left')
-# ax[1].legend(fontsize=16, loc='upper left')
-# plt.show()
+# Show the plot
+plt.tight_layout()
+ax[0].legend(fontsize=16, loc='upper left')
+ax[1].legend(fontsize=16, loc='upper left')
+plt.show()
 
 
 # # Load the rewards from the CSV file
@@ -141,7 +141,7 @@ cumulative_rewards = cumulative_rewards_df['cumulative_reward'].values[:2000]
 fig, ax = plt.subplots(figsize=(10, 5))
 
 # Plot the cumulative rewards with transparency
-ax.plot(cumulative_rewards, label='Cumulative Reward', color='blue', alpha=0.5)
+ax.plot(cumulative_rewards, label='Cumulative Reward', color='blue', alpha=0.3)
 
 # Smooth evolution using a moving average
 window_size = 100
