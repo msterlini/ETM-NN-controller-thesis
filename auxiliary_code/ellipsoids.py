@@ -47,7 +47,7 @@ def ellipsoid_plot_3D(P, plot=True, ax=None, color=None, legend=None):
       ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=3, cstride=4, color=color, alpha=0.3, linewidth=0)
 
     ax.set_xlabel(r'$\theta$ (deg)', fontsize=14)
-    ax.set_ylabel(r'$\dot\theta$ (rad/s)', fontsize=14)
+    ax.set_ylabel(r'$\omega$ (rad/s)', fontsize=14)
     ax.set_zlabel('z', fontsize=14)
     ax.set_box_aspect([1, 1, 1])
     ax.grid(True)

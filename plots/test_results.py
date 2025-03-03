@@ -222,12 +222,12 @@ axs[1].legend(fontsize=14, loc='upper right', ncols=3)
 axs[1].grid(True)
 
 # V plot
-axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1], label=r'$\dot \theta$')
+axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1], label=r'$\omega$')
 # V star plot
-axs[2].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[1], 'r--', label=r'$\dot \theta_*$')
+axs[2].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[1], 'r--', label=r'$\omega_*$')
 axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1] * events[:plot_cut, s.nlayers-1], marker='o', markerfacecolor='none', linestyle='None', label='Events')
 # axs[2].set_xlabel('Time steps',fontsize=14)
-axs[2].set_ylabel(r'$\dot \theta$ (rad/s)',fontsize=14)
+axs[2].set_ylabel(r'$\omega$ (rad/s)',fontsize=14)
 axs[2].legend(fontsize=14, loc='upper right', ncols=3)
 axs[2].grid(True)
 
