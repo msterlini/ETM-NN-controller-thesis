@@ -4,7 +4,7 @@ This repository contains the implementation of the algorithms and simulations us
 
 ## Dependencies
 
-This project uses [`uv`](https://github.com/astral.sh/uv) for dependency management. Follow the steps below to set up the environment.
+This project uses [`uv`](https://github.com/astral-sh/uv) for dependency management. Follow the steps below to set up the environment.
 
 ## Setup Instructions
 
