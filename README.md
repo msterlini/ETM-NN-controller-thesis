@@ -32,6 +32,7 @@ This project requires a valid Mosek license.
 
 ## Repository Structure
 
+```
 📂 thesis-code
 │-- LMI_results/           # LMI results used in the paper "Layer-wise dynamic event-triggered neural network control for discrete-time nonlinear systems"
 │-- auxiliary_code/        # Code used to plot ellipsoids
